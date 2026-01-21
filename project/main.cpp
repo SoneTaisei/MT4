@@ -29,7 +29,25 @@ struct Quaternion {
 	float y;
 	float z;
 	float w;
+
+	Quaternion operator-() const {
+		return { -x, -y, -z, -w };
+	}
 };
+
+// どこでも使えるように演算子を定義
+inline Quaternion operator*(float s, const Quaternion &q) {
+	return { q.x * s, q.y * s, q.z * s, q.w * s };
+}
+
+// ついでに Quaternion + Quaternion も定義しておくと便利です
+inline Quaternion operator+(const Quaternion &a, const Quaternion &b) {
+	return { a.x + b.x, a.y + b.y, a.z + b.z, a.w + b.w };
+}
+
+float Dot (const Quaternion &a, const Quaternion &b) {
+	return a.x * b.x + a.y * b.y + a.z * b.z + a.w * b.w;
+}
 
 // 1. Quaternionの積
 Quaternion Multiply (const Quaternion &lhs, const Quaternion &rhs) {
@@ -200,6 +218,21 @@ Matrix4x4 MakeRotateMatrix (const Quaternion &quaternion) {
 	return result;
 }
 
+Quaternion Slerp ( Quaternion &q0,  Quaternion &q1, float t) {
+	// 内積を求める
+	float dot = Dot (q0, q1);
+	if (dot < 0) {
+		q0 = -q0;
+		dot = -dot;
+	}
+	float theta = std::acos (dot);
+
+	float scale0 = std::sin ((1 - t) * theta) / std::sin (theta);
+	float scale1 = std::sin (t * theta) / std::sin (theta);
+
+	return scale0 * q0 + scale1 * q1;
+}
+
 // 画面表示用のヘルパー関数（課題の出力形式に合わせる）
 void QuaternionScreenPrintf (int x, int y, const Quaternion &q, const char *label) {
 	// ここは %.2f のまま (画像: 0.20, 0.08...)
@@ -234,17 +267,14 @@ int WINAPI WinMain (HINSTANCE, HINSTANCE, LPSTR, int) {
 	// 初期化と計算
 	// =====================
 
-	// スクリーンショット通りの計算処理
-	Quaternion rotation = MakeRotateAxisAngleQuaternion (
-		Normalize (Vector3{ 1.0f, 0.4f, -0.2f }), 0.45f
-	);
+	Quaternion rotation0 = MakeRotateAxisAngleQuaternion ({ 0.71f,0.71f,0.0f }, 0.3f);
+	Quaternion rotation1 = MakeRotateAxisAngleQuaternion ({ 0.71f,0.0f,0.71f }, 3.141592f);
 
-	Vector3 pointY = { 2.1f, -0.9f, 1.3f };
-
-	Matrix4x4 rotateMatrix = MakeRotateMatrix (rotation);
-
-	Vector3 rotateByQuaternion = RotateVector (pointY, rotation);
-	Vector3 rotateByMatrix = Transform (pointY, rotateMatrix);
+	Quaternion interpolate0 = Slerp (rotation0, rotation1, 0.0f);
+	Quaternion interpolate1 = Slerp (rotation0, rotation1, 0.3f);
+	Quaternion interpolate2 = Slerp (rotation0, rotation1, 0.5f);
+	Quaternion interpolate3 = Slerp (rotation0, rotation1, 0.7f);
+	Quaternion interpolate4 = Slerp (rotation0, rotation1, 1.0f);
 
 	char keys[256] = { 0 };
 	char preKeys[256] = { 0 };
@@ -267,10 +297,11 @@ int WINAPI WinMain (HINSTANCE, HINSTANCE, LPSTR, int) {
 		///
 
 		// 実行結果の表示 (行間を20pxとして表示)
-		QuaternionScreenPrintf (0, kRowHeight * 0, rotation, "rotation");
-		MatrixScreenPrintf (0, kRowHeight * 1, rotateMatrix, "rotateMatrix");
-		VectorScreenPrintf (0, kRowHeight * 6, rotateByQuaternion, "rotateByQuaternion");
-		VectorScreenPrintf (0, kRowHeight * 7, rotateByMatrix, "rotateByMatrix");
+		QuaternionScreenPrintf (0, kRowHeight * 0, interpolate0, "interpolate0");
+		QuaternionScreenPrintf (0, kRowHeight * 1, interpolate1, "interpolate1");
+		QuaternionScreenPrintf (0, kRowHeight * 2, interpolate2, "interpolate2");
+		QuaternionScreenPrintf (0, kRowHeight * 3, interpolate3, "interpolate3");
+		QuaternionScreenPrintf (0, kRowHeight * 4, interpolate4, "interpolate4");
 
 
 		///
